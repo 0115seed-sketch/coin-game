@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>조작된 동전 - 확률 게임</title>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 역할 선택 화면 -->
+        <div id="role-selection" class="screen active">
+            <h1>🪙 조작된 동전</h1>
+            <p class="subtitle">동전의 비밀을 찾아라!</p>
+            <div class="role-buttons">
+                <button class="role-btn maker-btn" onclick="selectRole('maker')">
+                    🔧 동전 제작자
+                </button>
+                <button class="role-btn detective-btn" onclick="selectRole('detective')">
+                    🔍 동전 탐정
+                </button>
+            </div>
+        </div>
+
+        <!-- 제작자 설정 화면 -->
+        <div id="maker-setup" class="screen">
+            <h2>동전 제작자 설정</h2>
+            <div id="login-section" class="setup-box">
+                <h3>👤 로그인이 필요합니다</h3>
+                <p style="color: #888; margin-bottom: 20px;">게임을 생성하려면 Google 계정으로 로그인하세요</p>
+                <button class="start-btn" onclick="signInWithGoogle()">🔐 Google로 로그인</button>
+            </div>
+            <div id="game-setup" class="setup-box" style="display:none;">
+                <div id="user-info" style="text-align: center; margin-bottom: 20px; padding: 15px; background: #f0f0f0; border-radius: 10px;">
+                    <p style="margin: 0; color: #666;">👤 <span id="user-name"></span></p>
+                </div>
+                <label for="probability">앞면이 나올 확률 (%)</label>
+                <input type="number" id="probability" min="0" max="100" value="50">
+                <div class="probability-display">
+                    <span id="probability-value">50</span>%
+                </div>
+                
+                <label for="max-attempts">최대 시도 횟수</label>
+                <input type="number" id="max-attempts" min="1" max="10" value="5">
+                
+                <button class="start-btn" onclick="createGameRoom()">게임 시작</button>
+            </div>
+            <div id="room-code-display" class="room-code-box" style="display:none;">
+                <h3>입장 코드</h3>
+                <div class="code">
+                    <span id="room-code"></span>
+                </div>
+                <p class="info">탐정에게 이 코드를 알려주세요!</p>
+            </div>
+            <button class="back-btn" onclick="backToRoleSelection()">← 돌아가기</button>
+        </div>
+
+        <!-- 탐정 입장 화면 -->
+        <div id="detective-join" class="screen">
+            <h2>동전 탐정 입장</h2>
+            <div class="setup-box">
+                <label for="join-code">입장 코드 입력</label>
+                <input type="text" id="join-code" placeholder="코드를 입력하세요" maxlength="6">
+                <button class="start-btn" onclick="joinGame()">입장하기</button>
+            </div>
+            <button class="back-btn" onclick="backToRoleSelection()">← 돌아가기</button>
+        </div>
+
+        <!-- 게임 화면 -->
+        <div id="game-screen" class="screen">
+            <div class="game-header">
+                <h2>🔍 동전 탐정</h2>
+                <div class="attempts-left">
+                    남은 시도: <span id="attempts-left">5</span>회
+                </div>
+            </div>
+
+            <div class="coin-container">
+                <div id="coin" class="coin">
+                    <div class="coin-face front"></div>
+                    <div class="coin-face back"></div>
+                </div>
+            </div>
+
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-label">총 던진 횟수</div>
+                    <div class="stat-value" id="total-flips">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">앞면 나온 횟수</div>
+                    <div class="stat-value" id="heads-count">0</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="auto-flip-btn" id="auto-flip-btn" onclick="toggleAutoFlip()">
+                    <span class="btn-icon">▶</span>
+                    <span class="btn-text">자동 던지기 시작</span>
+                </button>
+            </div>
+
+            <div class="guess-section" id="guess-section">
+                <h3>🎯 확률 추측하기</h3>
+                <div class="guess-input">
+                    <input type="number" id="guess" min="0" max="100" placeholder="0-100">
+                    <span>%</span>
+                </div>
+                <button class="submit-btn" onclick="submitGuess()">제출하기</button>
+            </div>
+
+            <div class="success-message hidden" id="success-message">
+                <h3>🎉 정답을 맞추셨습니다!</h3>
+                <p id="success-text"></p>
+            </div>
+
+            <button class="back-btn" onclick="backToRoleSelection()" style="margin-top: 20px;">← 다른 게임 참여하기</button>
+        </div>
+
+        <!-- 결과 화면 -->
+        <div id="result-screen" class="screen">
+            <div id="result-content"></div>
+            <button class="start-btn" onclick="resetGame()">새 게임 시작</button>
+        </div>
+    </div>
+
+    <!-- 메시지 박스 -->
+    <div class="overlay" id="overlay" onclick="closeMessage()"></div>
+    <div class="message-box" id="message-box">
+        <div class="message-icon" id="message-icon"></div>
+        <div class="message-text" id="message-text"></div>
+        <button class="message-close" onclick="closeMessage()">확인</button>
+    </div>
+
+    <script src="game.js"></script>
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+      import { getAuth, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+      import { getFirestore, collection, addDoc, getDoc, doc, onSnapshot, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+      // Firebase 설정 (Firebase Console에서 복사)
+      const firebaseConfig = {
+        apiKey: "AIzaSyCfZLXKeLx-Q80NR1EuDWPxIe6o4QWl28U",
+        authDomain: "coin-game-d8e7a.firebaseapp.com",
+        projectId: "coin-game-d8e7a",
+        storageBucket: "coin-game-d8e7a.firebasestorage.app",
+        messagingSenderId: "1057831129270",
+        appId: "1:1057831129270:web:41c5e4a26f999d0df5d617"
+      };
+      // Firebase 초기화
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+      
+      // 전역으로 사용할 수 있도록 설정
+      window.firebaseAuth = auth;
+      window.firebaseDb = db;
+      window.GoogleAuthProvider = GoogleAuthProvider;
+      window.signInWithPopup = signInWithPopup;
+      window.firestoreCollection = collection;
+      window.firestoreAddDoc = addDoc;
+      window.firestoreGetDoc = getDoc;
+      window.firestoreDoc = doc;
+      window.firestoreOnSnapshot = onSnapshot;
+      window.firestoreGetDocs = getDocs;
+      window.firestoreQuery = query;
+      window.firestoreWhere = where;
+    </script>
+</body>
+</html>
