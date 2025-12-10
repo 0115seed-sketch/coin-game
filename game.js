@@ -48,8 +48,9 @@ async function createGameRoom() {
     gameState.roomCode = generateRoomCode();
     
     try {
-        // Firestore에 방 정보 저장
-        await window.firestoreAddDoc(window.firestoreCollection(window.firebaseDb, 'rooms'), {
+        // Firestore에 방 정보 저장 (roomCode를 문서 ID로 사용)
+        const roomRef = window.firestoreDoc(window.firebaseDb, 'rooms', gameState.roomCode);
+        await window.firestoreSetDoc(roomRef, {
             roomCode: gameState.roomCode,
             creatorId: currentUser.uid,
             creatorName: currentUser.displayName,
@@ -59,6 +60,7 @@ async function createGameRoom() {
             active: true
         });
         
+        console.log('방 생성 완료:', gameState.roomCode);
         document.getElementById('room-code').textContent = gameState.roomCode;
         document.getElementById('room-code-display').style.display = 'block';
         
@@ -147,23 +149,25 @@ async function joinGame() {
     }
     
     try {
-        // Firestore에서 방 정보 검색
-        const roomsRef = window.firestoreCollection(window.firebaseDb, 'rooms');
-        const snapshot = await window.firestoreGetDocs(
-            window.firestoreQuery(
-                roomsRef, 
-                window.firestoreWhere('roomCode', '==', code), 
-                window.firestoreWhere('active', '==', true)
-            )
-        );
+        console.log('입장 시도:', code);
         
-        if (snapshot.empty) {
+        // Firestore에서 방 정보 가져오기 (문서 ID로 직접 조회)
+        const roomRef = window.firestoreDoc(window.firebaseDb, 'rooms', code);
+        const roomSnap = await window.firestoreGetDoc(roomRef);
+        
+        if (!roomSnap.exists()) {
+            console.log('방을 찾을 수 없음:', code);
             showMessage('error', '❌', '존재하지 않는 입장 코드입니다!');
             return;
         }
         
-        const roomDoc = snapshot.docs[0];
-        const room = roomDoc.data();
+        const room = roomSnap.data();
+        console.log('방 정보 로드:', room);
+        
+        if (!room.active) {
+            showMessage('error', '❌', '비활성화된 방입니다!');
+            return;
+        }
         
         gameState.roomCode = code;
         gameState.probability = room.probability;
@@ -175,7 +179,7 @@ async function joinGame() {
         showMessage('success', '✅', '게임에 참여했습니다!');
     } catch (error) {
         console.error('입장 실패:', error);
-        showMessage('error', '❌', '게임 입장에 실패했습니다.');
+        showMessage('error', '❌', `게임 입장에 실패했습니다: ${error.message}`);
     }
 }
 

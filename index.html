@@ -137,7 +137,7 @@
     <script type="module">
       import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
       import { getAuth, GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-      import { getFirestore, collection, addDoc, getDoc, doc, onSnapshot, getDocs, query, where } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+      import { getFirestore, collection, addDoc, getDoc, doc, onSnapshot, getDocs, query, where, setDoc, deleteDoc } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
       // Firebase 설정 (Firebase Console에서 복사)
       const firebaseConfig = {
@@ -166,6 +166,8 @@
       window.firestoreGetDocs = getDocs;
       window.firestoreQuery = query;
       window.firestoreWhere = where;
+      window.firestoreSetDoc = setDoc;
+      window.firestoreDeleteDoc = deleteDoc;
     </script>
 </body>
 </html>
