@@ -113,6 +113,9 @@
             <div class="success-message hidden" id="success-message">
                 <h3>🎉 정답을 맞추셨습니다!</h3>
                 <p id="success-text"></p>
+                <button class="graph-btn" id="graph-btn" onclick="showGraph()" style="display: none;">
+                    📊 그래프로 확인하기
+                </button>
             </div>
 
             <button class="back-btn" onclick="backToRoleSelection()" style="margin-top: 20px;">← 다른 게임 참여하기</button>
@@ -131,6 +134,18 @@
         <div class="message-icon" id="message-icon"></div>
         <div class="message-text" id="message-text"></div>
         <button class="message-close" onclick="closeMessage()">확인</button>
+    </div>
+
+    <!-- 그래프 모달 -->
+    <div class="graph-modal" id="graph-modal" onclick="closeGraph()">
+        <div class="graph-container" onclick="event.stopPropagation()">
+            <button class="graph-close" onclick="closeGraph()">✕</button>
+            <h2>📊 상대도수 변화 그래프</h2>
+            <canvas id="graph-canvas"></canvas>
+            <p class="graph-description">
+                던진 횟수가 증가할수록 상대도수가 실제 확률에 가까워집니다!
+            </p>
+        </div>
     </div>
 
     <script src="game.js"></script>

@@ -10,7 +10,8 @@ let gameState = {
     headsCount: 0,
     autoFlipActive: false,
     autoFlipInterval: null,
-    autoFlipMode: 1 // 1, 10, 100, 1000
+    autoFlipMode: 1, // 1, 10, 100, 1000
+    relativeFrequencyData: [] // {flips: number, frequency: number}[] 형태로 저장
 };
 
 // Google 로그인
@@ -120,7 +121,8 @@ function resetGameState() {
         headsCount: 0,
         autoFlipActive: false,
         autoFlipInterval: null,
-        autoFlipMode: 1
+        autoFlipMode: 1,
+        relativeFrequencyData: []
     };
 }
 
@@ -223,6 +225,21 @@ function flipCoinOnce() {
 function updateStats() {
     document.getElementById('total-flips').textContent = gameState.totalFlips;
     document.getElementById('heads-count').textContent = gameState.headsCount;
+    
+    // 상대도수 데이터 기록 (그래프용)
+    if (gameState.totalFlips > 0) {
+        const relativeFrequency = (gameState.headsCount / gameState.totalFlips) * 100;
+        gameState.relativeFrequencyData.push({
+            flips: gameState.totalFlips,
+            frequency: relativeFrequency
+        });
+        
+        // 그래프 모달이 열려있으면 실시간 업데이트
+        const modal = document.getElementById('graph-modal');
+        if (modal && modal.style.display === 'flex') {
+            drawGraph();
+        }
+    }
 }
 
 function checkAndUpgradeMode() {
@@ -311,12 +328,23 @@ function submitGuess() {
     }
     
     if (guess === gameState.probability) {
+        // 정답 맞춘 시각 기록
+        const now = new Date();
+        const hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        const timeString = `${hours}시 ${minutes}분 ${seconds}초`;
+        
         // 추측 섹션 숨기고 성공 메시지 표시
         document.getElementById('guess-section').classList.add('hidden');
         const successMessage = document.getElementById('success-message');
         const successText = document.getElementById('success-text');
         successMessage.classList.remove('hidden');
-        successText.innerHTML = `실제 확률은 <strong>${gameState.probability}%</strong>였습니다.<br>총 <strong>${gameState.totalFlips}번</strong> 던져서 <strong>${gameState.headsCount}번</strong> 앞면이 나왔습니다.<br><br>계속 동전을 던져보세요!`;
+        successText.innerHTML = `실제 확률은 <strong>${gameState.probability}%</strong>였습니다.<br>총 <strong>${gameState.totalFlips}번</strong> 던져서 <strong>${gameState.headsCount}번</strong> 앞면이 나왔습니다.<br><br>⏰ <strong>${timeString}</strong>에 정답을 맞추셨습니다!<br><br>계속 동전을 던져보세요!`;
+        
+        // 그래프 버튼 표시
+        document.getElementById('graph-btn').style.display = 'block';
+        
         // 게임 화면 유지, 계속 동전 던지기 가능
     } else {
         gameState.attemptsLeft--;
@@ -393,4 +421,142 @@ function showLoseScreen() {
 function resetGame() {
     resetGameState();
     showScreen('role-selection');
+}
+
+function drawGraph() {
+    const canvas = document.getElementById('graph-canvas');
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // 캔버스 크기 설정
+    canvas.width = 800;
+    canvas.height = 500;
+    
+    // 배경 색상
+    ctx.fillStyle = '#E8F4F8';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // 그래프 영역 설정
+    const padding = 60;
+    const graphWidth = canvas.width - padding * 2;
+    const graphHeight = canvas.height - padding * 2;
+    const graphX = padding;
+    const graphY = padding;
+    
+    // 데이터 준비 (너무 많으면 샘플링)
+    let data = gameState.relativeFrequencyData;
+    const maxPoints = 200;
+    if (data.length > maxPoints) {
+        const step = Math.floor(data.length / maxPoints);
+        data = data.filter((_, index) => index % step === 0);
+    }
+    
+    if (data.length === 0) return;
+    
+    const maxFlips = data[data.length - 1].flips;
+    
+    // 축 그리기
+    ctx.strokeStyle = '#333';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(graphX, graphY);
+    ctx.lineTo(graphX, graphY + graphHeight);
+    ctx.lineTo(graphX + graphWidth, graphY + graphHeight);
+    ctx.stroke();
+    
+    // Y축 눈금 (0% ~ 100%)
+    ctx.fillStyle = '#333';
+    ctx.font = '14px Jua';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 10; i++) {
+        const y = graphY + graphHeight - (graphHeight * i / 10);
+        const label = (i * 10) + '%';
+        ctx.fillText(label, graphX - 10, y + 5);
+        
+        // 격자선
+        ctx.strokeStyle = '#ddd';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(graphX, y);
+        ctx.lineTo(graphX + graphWidth, y);
+        ctx.stroke();
+    }
+    
+    // X축 눈금 (던진 횟수)
+    ctx.textAlign = 'center';
+    const xSteps = 5;
+    for (let i = 0; i <= xSteps; i++) {
+        const x = graphX + (graphWidth * i / xSteps);
+        const label = Math.round(maxFlips * i / xSteps);
+        ctx.fillText(label, x, graphY + graphHeight + 25);
+    }
+    
+    // 축 레이블
+    ctx.font = '16px Jua';
+    ctx.fillStyle = '#555';
+    ctx.fillText('던진 횟수', graphX + graphWidth / 2, canvas.height - 10);
+    
+    ctx.save();
+    ctx.translate(15, graphY + graphHeight / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText('앞면 나올 상대도수 (%)', 0, 0);
+    ctx.restore();
+    
+    // 실제 확률 기준선
+    const targetY = graphY + graphHeight - (graphHeight * gameState.probability / 100);
+    ctx.strokeStyle = '#FF6B9D';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(graphX, targetY);
+    ctx.lineTo(graphX + graphWidth, targetY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // 기준선 레이블
+    ctx.fillStyle = '#FF6B9D';
+    ctx.font = 'bold 14px Jua';
+    ctx.textAlign = 'left';
+    ctx.fillText(`실제 확률: ${gameState.probability}%`, graphX + 10, targetY - 5);
+    
+    // 데이터 선 그리기
+    ctx.strokeStyle = '#4A90E2';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    
+    data.forEach((point, index) => {
+        const x = graphX + (point.flips / maxFlips) * graphWidth;
+        const y = graphY + graphHeight - (point.frequency / 100) * graphHeight;
+        
+        if (index === 0) {
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+        }
+    });
+    
+    ctx.stroke();
+    
+    // 데이터 점 그리기
+    ctx.fillStyle = '#4A90E2';
+    data.forEach((point) => {
+        const x = graphX + (point.flips / maxFlips) * graphWidth;
+        const y = graphY + graphHeight - (point.frequency / 100) * graphHeight;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+    });
+    
+}
+
+function showGraph() {
+    drawGraph();
+    const modal = document.getElementById('graph-modal');
+    modal.style.display = 'flex';
+}
+
+function closeGraph() {
+    document.getElementById('graph-modal').style.display = 'none';
 }
